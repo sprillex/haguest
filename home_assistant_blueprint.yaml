@@ -1,0 +1,148 @@
+blueprint:
+  name: "Local Guest Webhook Controller (Lights & Thermostats)"
+  description: >
+    Handles local, unauthenticated HTTP webhook commands from the ultra-lightweight 
+    Android client. Controls designated lights and climate devices, with optional 
+    access expiration via an input_datetime helper.
+  domain: automation
+  input:
+    webhook_id:
+      name: Webhook ID
+      description: The unique identifier for this webhook (e.g., guest_access_ctrl_91a).
+      default: guest_access_ctrl_91a
+      selector:
+        text:
+    expiration_helper:
+      name: (Optional) Access Expiration Timestamp
+      description: Optional input_datetime entity. If set, commands are rejected once this time has passed.
+      default: []
+      selector:
+        entity:
+          filter:
+            - domain: input_datetime
+    target_lights:
+      name: Allowed Lights
+      description: Lights that can be controlled via this webhook.
+      default: []
+      selector:
+        target:
+          entity:
+            filter:
+              - domain: light
+    target_climates:
+      name: Allowed Thermostats
+      description: Climate entities that can be adjusted via this webhook.
+      default: []
+      selector:
+        target:
+          entity:
+            filter:
+              - domain: climate
+
+mode: queued
+max: 10
+
+trigger:
+  - platform: webhook
+    webhook_id: !input webhook_id
+    local_only: true
+    allowed_methods:
+      - POST
+
+condition:
+  # Check if access expiration helper is defined and if current time is past expiration
+  - condition: template
+    value_template: >-
+      {% set exp_entity = '' !input expiration_helper %}
+      {% if exp_entity != '' and exp_entity != '[]' %}
+        {% set exp_ts = state_attr(exp_entity, 'timestamp') | default(0, true) %}
+        {{ exp_ts == 0 or now().timestamp() <= exp_ts }}
+      {% else %}
+        true
+      {% endif %}
+
+action:
+  - choose:
+      # -------------------------------------------------------------
+      # DOMAIN: LIGHT
+      # -------------------------------------------------------------
+      - conditions:
+          - condition: template
+            value_template: "{{ trigger.json.domain | default('light') == 'light' }}"
+        sequence:
+          - choose:
+              # Action: Turn Off
+              - conditions:
+                  - condition: template
+                    value_template: "{{ trigger.json.action == 'off' }}"
+                sequence:
+                  - target: !input target_lights
+                    action: light.turn_off
+
+              # Action: Toggle
+              - conditions:
+                  - condition: template
+                    value_template: "{{ trigger.json.action == 'toggle' }}"
+                sequence:
+                  - target: !input target_lights
+                    action: light.toggle
+
+              # Action: Preset or Turn On
+              - conditions:
+                  - condition: template
+                    value_template: "{{ trigger.json.action in ['preset', 'on'] }}"
+                sequence:
+                  - target: !input target_lights
+                    action: light.turn_on
+                    data:
+                      brightness_pct: >-
+                        {% set lvl = trigger.json.level | default('high') %}
+                        {% if lvl == 'low' %} 15
+                        {% elif lvl == 'medium' %} 50
+                        {% else %} 100
+                        {% endif %}
+
+      # -------------------------------------------------------------
+      # DOMAIN: CLIMATE / THERMOSTAT
+      # -------------------------------------------------------------
+      - conditions:
+          - condition: template
+            value_template: "{{ trigger.json.domain == 'climate' }}"
+        sequence:
+          - choose:
+              # Action: Temperature Step (+1 / -1)
+              - conditions:
+                  - condition: template
+                    value_template: "{{ trigger.json.action == 'temp_delta' }}"
+                sequence:
+                  - repeat:
+                      for_each: !input target_climates
+                      sequence:
+                        - action: climate.set_temperature
+                          target:
+                            entity_id: "{{ repeat.item }}"
+                          data:
+                            temperature: >-
+                              {% set cur = state_attr(repeat.item, 'temperature') | default(70, true) %}
+                              {% set delta = trigger.json.value | default(1, true) | float %}
+                              {{ (cur + delta) | round(1) }}
+
+              # Action: Absolute Temperature Set
+              - conditions:
+                  - condition: template
+                    value_template: "{{ trigger.json.action == 'set_temp' }}"
+                sequence:
+                  - target: !input target_climates
+                    action: climate.set_temperature
+                    data:
+                      temperature: "{{ trigger.json.value | float }}"
+
+              # Action: Mode Set (heat, cool, auto, off)
+              - conditions:
+                  - condition: template
+                    value_template: "{{ trigger.json.action == 'set_mode' }}"
+                sequence:
+                  - target: !input target_climates
+                    action: climate.set_hvac_mode
+                    data:
+                      hvac_mode: "{{ trigger.json.mode }}"
