@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">HAGuest</string>
+    <string name="title_devices">Guest Controls</string>
+    <string name="no_config_title">No Configuration</string>
+    <string name="no_config_desc">Scan a guest QR code or open an ha-light://setup link to configure local controls.</string>
+    <string name="action_advanced">Advanced HA App</string>
+    <string name="action_clear">Reset Setup</string>
+    <string name="btn_toggle">Toggle</string>
+    <string name="btn_off">Off</string>
+    <string name="btn_low">Low</string>
+    <string name="btn_med">Med</string>
+    <string name="btn_high">High</string>
+    <string name="btn_cool">Cool</string>
+    <string name="btn_heat">Heat</string>
+    <string name="btn_auto">Auto</string>
+    <string name="btn_step_down">-1°</string>
+    <string name="btn_step_up">+1°</string>
+    <string name="status_dispatched">Command sent</string>
+    <string name="status_failed">Failed: %s</string>
+    <string name="setup_success">Configured %d device(s)</string>
+
+    <!-- Light Theme Colors -->
+    <color name="bg_color">#F2F2F7</color>
+    <color name="card_bg">#FFFFFF</color>
+    <color name="text_primary">#000000</color>
+    <color name="text_secondary">#6E6E73</color>
+    <color name="accent_color">#007AFF</color>
+    <color name="btn_bg">#E5E5EA</color>
+    <color name="btn_text">#000000</color>
+    <color name="btn_accent_bg">#007AFF</color>
+    <color name="btn_accent_text">#FFFFFF</color>
+    <color name="card_stroke">#D1D1D6</color>
+    <color name="divider_color">#E5E5EA</color>
+    <color name="status_text">#34C759</color>
+
+    <style name="Theme.HAGuest" parent="android:Theme.DeviceDefault.DayNight">
+        <item name="android:windowBackground">@color/bg_color</item>
+        <item name="android:textColorPrimary">@color/text_primary</item>
+        <item name="android:textColorSecondary">@color/text_secondary</item>
+        <item name="android:colorAccent">@color/accent_color</item>
+        <item name="android:statusBarColor">@color/bg_color</item>
+        <item name="android:navigationBarColor">@color/bg_color</item>
+    </style>
+</resources>
